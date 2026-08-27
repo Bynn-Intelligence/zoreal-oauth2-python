@@ -1,6 +1,6 @@
 # zoreal-oauth2
 
-[![PyPI](https://img.shields.io/pypi/v/zoreal-oauth2)](https://pypi.org/project/zoreal-oauth2/) [![Python versions](https://img.shields.io/pypi/pyversions/zoreal-oauth2)](https://pypi.org/project/zoreal-oauth2/) [![CI](https://img.shields.io/github/actions/workflow/status/Bynn-Intelligence/zoreal-oauth2-python/ci.yml?branch=main&label=CI)](https://github.com/Bynn-Intelligence/zoreal-oauth2-python/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/zoreal-oauth2)](https://pypi.org/project/zoreal-oauth2/) [![Python versions](https://img.shields.io/pypi/pyversions/zoreal-oauth2)](https://pypi.org/project/zoreal-oauth2/) [![CI](https://img.shields.io/github/actions/workflow/status/Bynn-Intelligence/zoreal-oauth2-python/ci.yml?branch=main&label=CI)](https://github.com/Bynn-Intelligence/zoreal-oauth2-python/actions/workflows/ci.yml) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Bynn-Intelligence/zoreal-oauth2-python/badge)](https://scorecard.dev/viewer/?uri=github.com/Bynn-Intelligence/zoreal-oauth2-python) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 Login with ZOREAL for Python backends: the relying-party half of the flow that
 [`@zoreal/oauth2-react`](https://github.com/Bynn-Intelligence/zoreal-oauth2-react)
