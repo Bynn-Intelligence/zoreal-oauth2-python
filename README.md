@@ -19,8 +19,7 @@ zoreal-oauth2 (this package)   your backend: exchange, verify, userinfo
 ## Install
 
 ```sh
-# until the package is on PyPI, install from the git source:
-pip install "zoreal-oauth2 @ git+https://github.com/Bynn-Intelligence/zoreal-oauth2-python"
+pip install zoreal-oauth2
 ```
 
 Python >= 3.9. One dependency: `PyJWT[crypto]`. Framework-agnostic: the same
