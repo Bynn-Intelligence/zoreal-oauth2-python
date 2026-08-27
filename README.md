@@ -472,6 +472,10 @@ python3 -m venv .venv
 The tests are offline: keys are generated in-process and the JWKS fetch is
 stubbed.
 
+## Verifying this release
+
+Every version is published from GitHub Actions by [trusted publishing](https://docs.pypi.org/trusted-publishers/): the workflow authenticates to PyPI over OIDC with no long-lived API token stored anywhere, and ships [PEP 740](https://peps.python.org/pep-0740/) digital attestations — a [Sigstore](https://www.sigstore.dev/) signature over each artifact, recorded in a public transparency log. The release page on pypi.org shows the verified GitHub repository and workflow that built the files; to check an attestation yourself, see [`pypi-attestations`](https://pypi.org/project/pypi-attestations/).
+
 ## The ZOREAL OAuth2 library family
 
 | Repository | Package | Role |

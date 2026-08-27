@@ -8,9 +8,11 @@
 # To ship without cutting a release (docs, CI tweaks), put [skip publish] in
 # the commit message.
 #
-# Needs: the PYPI_API_TOKEN secret — or delete the password line below and
-# register this repo as a PyPI trusted publisher bound to the pypi-publish
-# environment, which is the better long-term posture.
+# Publishes via PyPI OIDC trusted publishing bound to the pypi-publish
+# environment: no PYPI_API_TOKEN, no stored credential. The publish action
+# mints PEP 740 digital attestations (Sigstore) by default on the trusted-
+# publishing path and uploads them beside the release. Requires this repo +
+# workflow + environment registered as a trusted publisher on pypi.org.
 name: Publish to PyPI
 
 on:
@@ -61,9 +63,11 @@ jobs:
           git tag "v${{ steps.bump.outputs.version }}"
           git push origin HEAD:main "v${{ steps.bump.outputs.version }}"
 
+      # No password: OIDC trusted publishing. With id-token: write present and
+      # this repo registered as a trusted publisher, the action authenticates
+      # by OIDC and generates PEP 740 attestations (attestations: true is the
+      # default) — a Sigstore signature over each artifact, shown on pypi.org.
       - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
 
       - run: gh release create "v${{ steps.bump.outputs.version }}" --title "v${{ steps.bump.outputs.version }}" --generate-notes
         env:
