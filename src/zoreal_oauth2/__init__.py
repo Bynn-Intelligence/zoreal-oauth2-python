@@ -12,7 +12,7 @@ from .auth import (
     PrivateKeyJwt,
     TlsClientAuth,
 )
-from .client import DEFAULT_ISSUER, ZorealOAuth2Client
+from .client import ACR_ORDER, DEFAULT_ISSUER, ZorealOAuth2Client
 from .errors import (
     ConfigurationError,
     ExchangeError,
@@ -25,6 +25,7 @@ from .login import Login
 __version__ = "0.1.2"
 
 __all__ = [
+    "ACR_ORDER",
     "ClientAuth",
     "ClientSecretBasic",
     "ConfigurationError",

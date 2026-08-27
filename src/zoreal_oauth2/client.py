@@ -18,6 +18,15 @@ DEFAULT_ISSUER = "https://id.zoreal.com"
 
 CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
+# The assurance vocabulary, weakest to strongest. Verification accepts equal
+# or stronger: an RP requiring zoreal.device is satisfied by a zoreal.live
+# token, never the reverse.
+ACR_ORDER: Dict[str, int] = {
+    "zoreal.session": 0,
+    "zoreal.device": 1,
+    "zoreal.live": 2,
+}
+
 
 class _MemoryCache:
     """The fallback JWKS cache: one process, TTL respected, no eviction beyond
@@ -102,16 +111,27 @@ class ZorealOAuth2Client:
         )
 
     def authenticate(
-        self, code: str, code_verifier: str, nonce: Optional[str] = None
+        self,
+        code: str,
+        code_verifier: str,
+        nonce: Optional[str] = None,
+        acr: Optional[str] = None,
     ) -> Login:
         """The whole login, in order: exchange the code (with the PKCE
         verifier the browser SDK handed over), verify the ID token against the
-        JWKS, check the nonce when the caller has it. Returns a
-        :class:`Login`; personal data is NOT fetched here, because the ID
+        JWKS, check the nonce when the caller has it, and -- when the caller
+        passes ``acr`` -- refuse a token whose assurance is below it. Returns
+        a :class:`Login`; personal data is NOT fetched here, because the ID
         token never carries it and not every caller wants it --
-        ``Login.userinfo`` fetches on first use."""
+        ``Login.userinfo`` fetches on first use.
+
+        REQUESTING an assurance on the wire (the SDK's ``acr_values``) is
+        advisory; the signed ``acr`` claim is the proof, and this parameter is
+        where a relying party that asked for a liveness check verifies it
+        actually happened. An RP that requires ``zoreal.live`` and never
+        passes ``acr`` here has checked nothing."""
         tokens = self.exchange(code, code_verifier)
-        claims = self.verify_id_token(tokens["id_token"], nonce=nonce)
+        claims = self.verify_id_token(tokens["id_token"], nonce=nonce, acr=acr)
         return Login(
             client=self,
             claims=claims,
@@ -169,13 +189,17 @@ class ZorealOAuth2Client:
         return body
 
     def verify_id_token(
-        self, id_token: str, nonce: Optional[str] = None
+        self,
+        id_token: str,
+        nonce: Optional[str] = None,
+        acr: Optional[str] = None,
     ) -> Dict[str, Any]:
         """ES256 against the provider's JWKS, plus ``iss`` (exact string
-        equality), ``aud``, ``exp`` and -- when the caller passes the nonce the
-        SDK generated -- the nonce binding. Returns the claims. There is no
-        RS256 fallback on purpose: ZOREAL signs nothing else, and accepting a
-        second algorithm is how algorithm confusion starts."""
+        equality), ``aud``, ``exp``, the nonce binding when the caller passes
+        the nonce the SDK generated, and the assurance floor when the caller
+        passes ``acr``. Returns the claims. There is no RS256 fallback on
+        purpose: ZOREAL signs nothing else, and accepting a second algorithm
+        is how algorithm confusion starts."""
         try:
             header = jwt.get_unverified_header(id_token)
         except jwt.PyJWTError as exc:
@@ -200,6 +224,8 @@ class ZorealOAuth2Client:
             raise VerificationError(
                 "the ID token nonce is not the one this login started with"
             )
+        if not _blank(acr):
+            self._verify_acr(claims, acr)
         return claims
 
     def userinfo(self, access_token: str) -> Dict[str, Any]:
@@ -226,6 +252,23 @@ class ZorealOAuth2Client:
         return body
 
     # -- internal ----------------------------------------------------------
+
+    def _verify_acr(self, claims: Dict[str, Any], required: str) -> None:
+        """Equal or stronger satisfies; anything else -- weaker, missing, or a
+        value outside the vocabulary -- is refused. An unknown REQUIREMENT is
+        a caller bug and says so plainly rather than failing every login."""
+        required_rank = ACR_ORDER.get(required)
+        if required_rank is None:
+            raise ConfigurationError(
+                f"unknown required acr {required}; supported: {', '.join(ACR_ORDER)}"
+            )
+        actual = claims.get("acr")
+        actual_rank = _acr_rank(actual)
+        if actual_rank is not None and actual_rank >= required_rank:
+            return
+        raise VerificationError(
+            f"the ID token says acr {actual!r}, below the required {required}"
+        )
 
     def _signing_key(self, kid: Optional[str]) -> Any:
         """The verification key for this token: from the cached JWKS, and on
@@ -288,6 +331,12 @@ class ZorealOAuth2Client:
         except urllib.error.HTTPError as exc:
             with exc:
                 return exc.code, exc.read()
+
+
+def _acr_rank(value: Any) -> Optional[int]:
+    """The rank of an acr value, or ``None`` for anything outside the
+    vocabulary -- including a claim that is not a string at all."""
+    return ACR_ORDER.get(value) if isinstance(value, str) else None
 
 
 def _select_key(jwks: Any, kid: Optional[str]) -> Any:

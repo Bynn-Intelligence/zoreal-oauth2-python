@@ -6,7 +6,7 @@ import time
 import jwt
 import pytest
 
-from zoreal_oauth2 import VerificationError, ZorealOAuth2Client
+from zoreal_oauth2 import ConfigurationError, VerificationError, ZorealOAuth2Client
 from tests.conftest import (
     CLIENT_ID,
     ISSUER,
@@ -76,6 +76,58 @@ def test_non_es256_algorithm_is_refused(client):
 def test_garbage_token_is_refused(client):
     with pytest.raises(VerificationError):
         client.verify_id_token("not-a-jwt")
+
+
+# -- the assurance floor -----------------------------------------------------
+# Requesting an acr on the wire was advisory; the signed acr claim is the
+# proof, and the acr= parameter is where a relying party checks it.
+
+
+def acr_claims(acr):
+    """Base claims with the acr under test -- or, for ``None``, with the
+    claim absent entirely, as a token from a plain session carries it."""
+    claims = base_claims()
+    del claims["nonce"]
+    del claims["acr"]
+    if acr is not None:
+        claims["acr"] = acr
+    return claims
+
+
+def test_equal_acr_satisfies(client, provider_key):
+    token = sign(acr_claims("zoreal.live"), provider_key)
+    assert client.verify_id_token(token, acr="zoreal.live")
+
+
+def test_stronger_acr_satisfies(client, provider_key):
+    token = sign(acr_claims("zoreal.live"), provider_key)
+    assert client.verify_id_token(token, acr="zoreal.device")
+
+
+def test_weaker_acr_is_refused(client, provider_key):
+    token = sign(acr_claims("zoreal.device"), provider_key)
+    with pytest.raises(VerificationError) as excinfo:
+        client.verify_id_token(token, acr="zoreal.live")
+    # The message names both values -- never the token itself.
+    assert "zoreal.device" in str(excinfo.value)
+    assert "zoreal.live" in str(excinfo.value)
+
+
+def test_missing_acr_is_refused_when_required(client, provider_key):
+    token = sign(acr_claims(None), provider_key)
+    with pytest.raises(VerificationError):
+        client.verify_id_token(token, acr="zoreal.session")
+
+
+def test_unknown_required_acr_is_a_caller_bug(client, provider_key):
+    token = sign(acr_claims("zoreal.live"), provider_key)
+    with pytest.raises(ConfigurationError) as excinfo:
+        client.verify_id_token(token, acr="zoreal.liveness")
+    assert "zoreal.liveness" in str(excinfo.value)
+
+
+def test_no_required_acr_checks_nothing(client, provider_key):
+    assert client.verify_id_token(sign(acr_claims(None), provider_key))
 
 
 def test_unknown_kid_invalidates_the_cache_and_refetches_once(monkeypatch):

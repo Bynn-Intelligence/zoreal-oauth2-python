@@ -46,6 +46,25 @@ class Login:
         return self.claims.get("acr")
 
     @property
+    def live(self) -> bool:
+        """A fresh liveness capture backed this login. The convenience
+        spelling of ``acr == "zoreal.live"``; for enforcement, pass ``acr``
+        to ``authenticate`` and let verification refuse the token instead of
+        checking after."""
+        return self.acr == "zoreal.live"
+
+    def satisfies_acr(self, required: str) -> bool:
+        """Equal or stronger satisfies, on the client's ordering
+        (``zoreal.session`` < ``zoreal.device`` < ``zoreal.live``). Unknown
+        values satisfy nothing."""
+        # Imported here, not at the top: the client module imports this one.
+        from .client import _acr_rank
+
+        actual = _acr_rank(self.acr)
+        wanted = _acr_rank(required)
+        return actual is not None and wanted is not None and actual >= wanted
+
+    @property
     def amr(self) -> Optional[List[str]]:
         return self.claims.get("amr")
 
