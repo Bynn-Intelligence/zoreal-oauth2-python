@@ -22,7 +22,7 @@ from .errors import (
 )
 from .login import Login
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 __all__ = [
     "ACR_ORDER",
