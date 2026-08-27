@@ -1,0 +1,70 @@
+# Auto-release zoreal-oauth2 on every push to main, the family pattern set by
+# zoreal-oauth2-react: bump the patch in pyproject.toml and __init__.py, run
+# the tests, build, publish to PyPI, push the bump commit and tag back to
+# main, and cut the GitHub release. The push back uses the default
+# GITHUB_TOKEN, which does not retrigger this workflow, and the bump commit
+# carries [skip publish] as a second guard.
+#
+# To ship without cutting a release (docs, CI tweaks), put [skip publish] in
+# the commit message.
+#
+# Needs: the PYPI_API_TOKEN secret — or delete the password line below and
+# register this repo as a PyPI trusted publisher bound to the pypi-publish
+# environment, which is the better long-term posture.
+name: Publish to PyPI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: "!contains(github.event.head_commit.message, '[skip publish]')"
+    runs-on: ubuntu-latest
+    environment: pypi-publish
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          CURRENT=$(grep -m1 '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          NEW="${CURRENT%.*}.$(( ${CURRENT##*.} + 1 ))"
+          sed -i "s/^version = \"${CURRENT}\"/version = \"${NEW}\"/" pyproject.toml
+          sed -i "s/__version__ = \"${CURRENT}\"/__version__ = \"${NEW}\"/" src/zoreal_oauth2/__init__.py
+          echo "version=${NEW}" >> "$GITHUB_OUTPUT"
+
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" build
+      - run: pytest
+
+      - run: python -m build
+
+      - run: |
+          git add pyproject.toml src/zoreal_oauth2/__init__.py
+          git commit -m "Release v${{ steps.bump.outputs.version }} [skip publish]"
+          git tag "v${{ steps.bump.outputs.version }}"
+          git push origin HEAD:main --follow-tags
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - run: gh release create "v${{ steps.bump.outputs.version }}" --title "v${{ steps.bump.outputs.version }}" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

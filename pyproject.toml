@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "zoreal-oauth2"
+version = "0.1.0"
+description = "Login with ZOREAL for Python backends."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "ZOREAL" }]
+keywords = ["zoreal", "oauth2", "oidc", "openid-connect", "login"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+  "Typing :: Typed",
+]
+# The one dependency (cryptography arrives through the extra). Everything else
+# is stdlib: urllib for the provider calls, ssl for mutual TLS.
+dependencies = ["PyJWT[crypto]>=2.9,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7,<9"]
+
+[project.urls]
+Homepage = "https://zoreal.com"
+Repository = "https://github.com/Bynn-Intelligence/zoreal-oauth2-python"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/zoreal_oauth2", "tests", "README.md", "LICENSE"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/zoreal_oauth2"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
