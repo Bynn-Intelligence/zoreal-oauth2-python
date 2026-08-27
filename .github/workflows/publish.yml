@@ -59,7 +59,7 @@ jobs:
           git add pyproject.toml src/zoreal_oauth2/__init__.py
           git commit -m "Release v${{ steps.bump.outputs.version }} [skip publish]"
           git tag "v${{ steps.bump.outputs.version }}"
-          git push origin HEAD:main --follow-tags
+          git push origin HEAD:main "v${{ steps.bump.outputs.version }}"
 
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
